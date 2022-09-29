@@ -1,0 +1,25 @@
+{
+  "name": "xhr-fake",
+  "version": "1.0.0",
+  "description": "fake specified xhr as you like",
+  "main": "dist/xhr-fake.js",
+  "types":"dist/xhr-fake.d.ts",
+  "scripts": {
+    "prepublish": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/argszero/xhr-fake.git"
+  },
+  "keywords": [],
+  "author": "argszero",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/argszero/xhr-fake/issues"
+  },
+  "homepage": "https://github.com/argszero/xhr-fake#readme",
+  "devDependencies": {
+    "typescript": "^4.8.4"
+  }
+}
