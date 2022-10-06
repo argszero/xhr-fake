@@ -1,12 +1,12 @@
 
 
 class Controoler {
-    blockerList: Set<Blocker>;
+    blockerList: Set<Fake>;
     constructor() {
         this.blockerList = new Set();
     }
-    block(regExp: RegExp, responseProvider: () => string): Blocker {
-        const blocker = new Blocker(regExp, responseProvider);
+    fake(regExp: RegExp, responseProvider: (req:Request) => string): Fake {
+        const blocker = new Fake(regExp, responseProvider);
         this.blockerList.add(blocker);
         return blocker;
     }
@@ -89,14 +89,20 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
 }
 window.XMLHttpRequest = FakeXMLHttpRequest;
 
-class Blocker {
+interface Request {
+    url: string | URL;
+    _header: Map<string, string>;
+    body?: Document | XMLHttpRequestBodyInit;
+}
+
+class Fake {
 
     regExp: RegExp;
-    responseProvider: () => string;
+    responseProvider: (req:Request) => string;
     endResolveSet = new Set<(value: { url: string | URL; _header: Map<string, string>; body?: Document | XMLHttpRequestBodyInit; } | PromiseLike<{ url: string | URL; _header: Map<string, string>; body: Document | XMLHttpRequestBodyInit; }>) => void>();
-    request!: { url: string | URL; _header: Map<string, string>; body?: Document | XMLHttpRequestBodyInit; };
+    request!: Request;
 
-    constructor(regExp: RegExp, responseProvider: () => string) {
+    constructor(regExp: RegExp, responseProvider: (req:Request) => string) {
         this.regExp = regExp;
         this.responseProvider = responseProvider;
     }
@@ -106,7 +112,7 @@ class Blocker {
         return result;
     }
     responseText() {
-        return this.responseProvider();
+        return this.responseProvider(this.request);
     }
     end(url: string | URL, _header: Map<string, string>, body?: Document | XMLHttpRequestBodyInit) {
         this.request = { url, _header, body };
