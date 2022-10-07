@@ -4,7 +4,7 @@ fake specified request with specified response at any time,and you can get the r
 
 ## How to use
 
-`
+```
 import xhr from 'xhr-fake';
 
 ...
@@ -15,4 +15,4 @@ const fake = xhr.fake(/api\/caculate/,(request)=>{JSON.stringify({result: 27}})
 document.getElementById('caculateBtn').click();
 
 const request = await fake.getRequest(3*1000);
-`
+```
