@@ -1,30 +1,29 @@
 
 
 class Controoler {
-    blockerList: Set<Fake>;
+    fakeList: Set<Fake>;
     constructor() {
-        this.blockerList = new Set();
+        this.fakeList = new Set();
     }
-    fake(regExp: RegExp, responseProvider: (req:Request) => string): Fake {
-        const blocker = new Fake(regExp, responseProvider);
-        this.blockerList.add(blocker);
-        return blocker;
+    fake(regExp: RegExp, responseProvider: (req: FakeRequest) => FakeResponse): Fake {
+        const fake = new Fake(regExp, responseProvider);
+        this.fakeList.add(fake);
+        return fake;
     }
-
-
 }
 
 export const xhr = new Controoler();
 
 class FakeXMLHttpRequest extends XMLHttpRequest {
     url!: string | URL;
-    _responseText: string|null = null;
+    _responseText: string | null = null;
     _readyState: number = -100;
     _header: Map<string, string> = new Map<string, string>();
+    _status = 200;
     open(method: string, url: string | URL): void {
         console.log('open ', url);
         this.url = url;
-        for (const blocker of xhr.blockerList) {
+        for (const blocker of xhr.fakeList) {
             if (blocker.matches(url)) {
                 console.log("open match url", this.url)
                 return;
@@ -34,7 +33,7 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
     }
     setRequestHeader(name: string, value: string): void {
         this._header.set(name, value);
-        for (const blocker of xhr.blockerList) {
+        for (const blocker of xhr.fakeList) {
             if (blocker.matches(this.url)) {
                 return;
             }
@@ -42,11 +41,13 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
         super.setRequestHeader(name, value);
     }
     send(body?: Document | XMLHttpRequestBodyInit): void {
-        for (const blocker of xhr.blockerList) {
-            if (blocker.matches(this.url)) {
-                blocker.end(this.url, this._header, body);
-                xhr.blockerList.delete(blocker);
-                this.responseText = blocker.responseText();
+        for (const fake of xhr.fakeList) {
+            if (fake.matches(this.url)) {
+                fake.end(this.url, this._header, body);
+                xhr.fakeList.delete(fake);
+                const fakeResponse = fake.response();
+                this.responseText = fakeResponse.body;
+                this._status = fakeResponse.status;
                 this._end();
                 return;
             }
@@ -66,7 +67,7 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
         }
     }
     get status() {
-        return 200;
+        return this._status;
     }
     set readyState(readyState: number) {
         this._readyState = readyState;
@@ -89,20 +90,26 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
 }
 window.XMLHttpRequest = FakeXMLHttpRequest;
 
-interface Request {
+interface FakeRequest {
     url: string | URL;
     _header: Map<string, string>;
-    body?: Document | XMLHttpRequestBodyInit;
+    body?: Body;
 }
+interface FakeResponse {
+    status: number;
+    body: string;
+}
+
+type Body = Document | XMLHttpRequestBodyInit | BodyInit | null;
 
 class Fake {
 
     regExp: RegExp;
-    responseProvider: (req:Request) => string;
-    endResolveSet = new Set<(value: { url: string | URL; _header: Map<string, string>; body?: Document | XMLHttpRequestBodyInit; } | PromiseLike<{ url: string | URL; _header: Map<string, string>; body: Document | XMLHttpRequestBodyInit; }>) => void>();
-    request!: Request;
+    responseProvider: (req: FakeRequest) => FakeResponse;
+    endResolveSet = new Set<(value: { url: string | URL; _header: Map<string, string>; body?: Body; } | PromiseLike<{ url: string | URL; _header: Map<string, string>; body: Document | XMLHttpRequestBodyInit; }>) => void>();
+    request!: FakeRequest;
 
-    constructor(regExp: RegExp, responseProvider: (req:Request) => string) {
+    constructor(regExp: RegExp, responseProvider: (req: FakeRequest) => FakeResponse) {
         this.regExp = regExp;
         this.responseProvider = responseProvider;
     }
@@ -111,17 +118,17 @@ class Fake {
         const result = this.regExp.test(url.toString());
         return result;
     }
-    responseText() {
+    response() {
         return this.responseProvider(this.request);
     }
-    end(url: string | URL, _header: Map<string, string>, body?: Document | XMLHttpRequestBodyInit) {
+    end(url: string | URL, _header: Map<string, string>, body?: Body) {
         this.request = { url, _header, body };
         for (const resolve of this.endResolveSet) {
             resolve(this.request);
         }
     }
     getRequest(timeout: number) {
-        return new Promise<{ url: string | URL; _header: Map<string, string>; body?: Document | XMLHttpRequestBodyInit; }>((resolve, _reject) => {
+        return new Promise<{ url: string | URL; _header: Map<string, string>; body?: Body; }>((resolve, _reject) => {
             if (this.request) {
                 resolve(this.request);
             } else {
@@ -133,8 +140,33 @@ class Fake {
 }
 
 
+const { fetch: originalFetch } = window;
+
+window.fetch = async (...args) => {
+    let [resource, config] = args;
+    let url = resource + '';
+
+    for (const fake of xhr.fakeList) {
+        if (fake.matches(url)) {
+            fake.end(url, JSON.parse(JSON.stringify(config?.headers)), config?.body);
+            xhr.fakeList.delete(fake);
+            return new Promise<Response>((resolve, _reject) => {
+                const response = fake.response();
+                const responseText = response.body;
+                resolve({
+                    status: response.status,
+                    json: async () => JSON.parse(responseText),
+                    text: async () => responseText,
+                } as Response);
+            });
+        }
+    }
+    const response = await originalFetch(resource, config);
+    return response;
+};
 
 //example
-// let block = xhr.block(/tesst/,()=>JSON.stringify({}));
+// let fake = xhr.fake(/tesst/,()=>JSON.stringify({}));
 // ...
-// const request = block.getRequest();
+// const request = fake.getRequest();
+
