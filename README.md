@@ -11,11 +11,7 @@ supports:
 
 ## How to use
 
-<<<<<<< HEAD
 ```javascript
-=======
-```
->>>>>>> 89d6e60386b9ddae4700448c23b48caabd618934
 import xhr from 'xhr-fake';
 
 ...
