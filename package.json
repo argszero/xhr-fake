@@ -1,6 +1,6 @@
 {
   "name": "xhr-fake",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "fake specified xhr as you like",
   "main": "dist/xhr-fake.js",
   "types":"dist/xhr-fake.d.ts",

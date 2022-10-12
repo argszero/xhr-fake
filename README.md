@@ -7,6 +7,9 @@ supports:
 * ajax request
 * fetch request
 
+# Why
+
+current xhr interceptors can modify response after send request to server. but sometimes we don't want to send request to server. so we create a new pakcage witch is a fake rather than a interceptor, meaning we don't want to send request to server
 
 
 ## How to use
