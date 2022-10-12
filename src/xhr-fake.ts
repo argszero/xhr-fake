@@ -148,7 +148,7 @@ window.fetch = async (...args) => {
 
     for (const fake of xhr.fakeList) {
         if (fake.matches(url)) {
-            fake.end(url, JSON.parse(JSON.stringify(config?.headers)), config?.body);
+            fake.end(url, JSON.parse(JSON.stringify(config?.headers || null)), config?.body);
             xhr.fakeList.delete(fake);
             return new Promise<Response>((resolve, _reject) => {
                 const response = fake.response();
