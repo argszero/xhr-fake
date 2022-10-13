@@ -100,7 +100,6 @@ class FakeResponse {
     headers?: Headers = new Headers({});
 }
 
-fetch('a').then(res => res.headers);
 type Body = Document | XMLHttpRequestBodyInit | BodyInit | null | undefined;
 
 class Fake {
