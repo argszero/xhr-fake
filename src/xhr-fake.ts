@@ -95,8 +95,8 @@ interface FakeRequest {
     body?: Body;
 }
 class FakeResponse {
-    status: number=200;
-    body: string="{}";
+    status: number = 200;
+    body: string = "{}";
     headers?: Headers = new Headers({});
 }
 
