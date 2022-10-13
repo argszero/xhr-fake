@@ -1,12 +1,14 @@
 
 
+type Mapping = (url: string | URL, body:Body) => boolean;
+
 class Controoler {
     fakeList: Set<Fake>;
     constructor() {
         this.fakeList = new Set();
     }
-    fake(regExp: RegExp, responseProvider: (req: FakeRequest) => FakeResponse): Fake {
-        const fake = new Fake(regExp, responseProvider);
+    fake(mapping: Mapping, responseProvider: (req: FakeRequest) => FakeResponse): Fake {
+        const fake = new Fake(mapping, responseProvider);
         this.fakeList.add(fake);
         return fake;
     }
@@ -20,29 +22,21 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
     _readyState: number = -100;
     _header: Map<string, string> = new Map<string, string>();
     _status = 200;
+    _method: string = "GET";
+    _opened: boolean = false;
     open(method: string, url: string | URL): void {
-        console.log('open ', url);
         this.url = url;
-        for (const blocker of xhr.fakeList) {
-            if (blocker.matches(url)) {
-                console.log("open match url", this.url)
-                return;
-            }
-        }
-        super.open(method, url);
+        this._method = method;
     }
     setRequestHeader(name: string, value: string): void {
         this._header.set(name, value);
-        for (const blocker of xhr.fakeList) {
-            if (blocker.matches(this.url)) {
-                return;
-            }
+        if(this._opened){
+            super.setRequestHeader(name, value);
         }
-        super.setRequestHeader(name, value);
     }
-    send(body?: Document | XMLHttpRequestBodyInit): void {
+    send(body?:  Document | XMLHttpRequestBodyInit | null): void {
         for (const fake of xhr.fakeList) {
-            if (fake.matches(this.url)) {
+            if (fake.mapping(this.url, body)) {
                 fake.end(this.url, this._header, body);
                 xhr.fakeList.delete(fake);
                 const fakeResponse = fake.response();
@@ -51,6 +45,11 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
                 this._end();
                 return;
             }
+        }
+        if(!this._opened){
+            this._opened = true;
+            super.open(this._method,this.url);
+            this._header.forEach((value,key) => super.setRequestHeader(key, value));
         }
         super.send(body);
     }
@@ -100,24 +99,20 @@ interface FakeResponse {
     body: string;
 }
 
-type Body = Document | XMLHttpRequestBodyInit | BodyInit | null;
+type Body = Document | XMLHttpRequestBodyInit | BodyInit | null|undefined;
 
 class Fake {
 
-    regExp: RegExp;
+    mapping: Mapping;
     responseProvider: (req: FakeRequest) => FakeResponse;
     endResolveSet = new Set<(value: { url: string | URL; _header: Map<string, string>; body?: Body; } | PromiseLike<{ url: string | URL; _header: Map<string, string>; body: Document | XMLHttpRequestBodyInit; }>) => void>();
     request!: FakeRequest;
 
-    constructor(regExp: RegExp, responseProvider: (req: FakeRequest) => FakeResponse) {
-        this.regExp = regExp;
+    constructor(mapping: Mapping, responseProvider: (req: FakeRequest) => FakeResponse) {
+        this.mapping = mapping;
         this.responseProvider = responseProvider;
     }
 
-    matches(url: string | URL) {
-        const result = this.regExp.test(url.toString());
-        return result;
-    }
     response() {
         return this.responseProvider(this.request);
     }
@@ -147,7 +142,7 @@ window.fetch = async (...args) => {
     let url = resource + '';
 
     for (const fake of xhr.fakeList) {
-        if (fake.matches(url)) {
+        if (fake.mapping(url,config?.body)) {
             fake.end(url, JSON.parse(JSON.stringify(config?.headers || null)), config?.body);
             xhr.fakeList.delete(fake);
             return new Promise<Response>((resolve, _reject) => {
