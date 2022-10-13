@@ -19,7 +19,7 @@ import xhr from 'xhr-fake';
 
 ...
 
-const fake = xhr.fake(/api\/caculate/, (_request) => ({ 
+const fake = xhr.fake((url,_body)=>/api\/caculate/.test(url), (_request) => ({ 
     status:200,
     body: JSON.stringify({ result: 27 }) 
 }));
