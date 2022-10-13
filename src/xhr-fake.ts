@@ -1,6 +1,6 @@
 
 
-type Mapping = (url: string | URL, body:Body) => boolean;
+type Mapping = (url: string | URL, body: Body) => boolean;
 
 class Controoler {
     fakeList: Set<Fake>;
@@ -30,11 +30,11 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
     }
     setRequestHeader(name: string, value: string): void {
         this._header.set(name, value);
-        if(this._opened){
+        if (this._opened) {
             super.setRequestHeader(name, value);
         }
     }
-    send(body?:  Document | XMLHttpRequestBodyInit | null): void {
+    send(body?: Document | XMLHttpRequestBodyInit | null): void {
         for (const fake of xhr.fakeList) {
             if (fake.mapping(this.url, body)) {
                 fake.end(this.url, this._header, body);
@@ -46,10 +46,10 @@ class FakeXMLHttpRequest extends XMLHttpRequest {
                 return;
             }
         }
-        if(!this._opened){
+        if (!this._opened) {
             this._opened = true;
-            super.open(this._method,this.url);
-            this._header.forEach((value,key) => super.setRequestHeader(key, value));
+            super.open(this._method, this.url);
+            this._header.forEach((value, key) => super.setRequestHeader(key, value));
         }
         super.send(body);
     }
@@ -94,12 +94,14 @@ interface FakeRequest {
     _header: Map<string, string>;
     body?: Body;
 }
-interface FakeResponse {
+class FakeResponse {
     status: number;
     body: string;
+    headers?: Headers = new Headers({});
 }
 
-type Body = Document | XMLHttpRequestBodyInit | BodyInit | null|undefined;
+fetch('a').then(res => res.headers);
+type Body = Document | XMLHttpRequestBodyInit | BodyInit | null | undefined;
 
 class Fake {
 
@@ -142,7 +144,7 @@ window.fetch = async (...args) => {
     let url = resource + '';
 
     for (const fake of xhr.fakeList) {
-        if (fake.mapping(url,config?.body)) {
+        if (fake.mapping(url, config?.body)) {
             fake.end(url, JSON.parse(JSON.stringify(config?.headers || null)), config?.body);
             xhr.fakeList.delete(fake);
             return new Promise<Response>((resolve, _reject) => {
@@ -152,6 +154,7 @@ window.fetch = async (...args) => {
                     status: response.status,
                     json: async () => JSON.parse(responseText),
                     text: async () => responseText,
+                    headers: response.headers,
                 } as Response);
             });
         }
@@ -159,9 +162,3 @@ window.fetch = async (...args) => {
     const response = await originalFetch(resource, config);
     return response;
 };
-
-//example
-// let fake = xhr.fake(/tesst/,()=>JSON.stringify({}));
-// ...
-// const request = fake.getRequest();
-
