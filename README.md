@@ -29,3 +29,12 @@ document.getElementById('caculateBtn').click();
 
 const request = await fake.getRequest(3*1000);
 ```
+
+
+## test in browser
+
+```bash
+cd test-browser
+npm run dev
+```
+open http://localhost:3000/ and run test
